@@ -1,0 +1,39 @@
+global-env: local
+
+mqtt-config:
+    local:
+        mqtt.server: localhost
+        mqtt.port: 1883
+        mqtt.client.id: mqtt-client-1
+        mqtt.generator.client.id: mqtt-client-2 # (optional) to prevent collisions with other clients if running generator and consumer at the same time
+        mqtt.topic: test
+        mqtt.require.login: false
+        mqtt.user: null
+        mqtt.pass: null
+        mqtt.tls: false
+    remote:
+        mqtt.server: localhost
+        mqtt.port: 1883
+        mqtt.client.id: mqtt-client-1
+        mqtt.topic: test
+        mqtt.require.login: false
+        mqtt.user: null
+        mqtt.pass: null
+        mqtt.tls: false
+
+kafka-config:
+    local:
+        bootstrap.servers: localhost:9092
+        group.id: kafka-python-group
+        auto.offset.reset: earliest
+        enable.auto.commit: false
+        auto.commit.interval.ms: 1000
+        session.timeout.ms: 30000
+        api.version.request: true
+        connect.url: http://localhost:8083
+        mqtt.source.connector.file: ./mqtt/mqtt-source-local.json
+
+elastic-config:
+    local:
+        elastic.url: http://localhost:9200
+        kibana.url: http://localhost:5601

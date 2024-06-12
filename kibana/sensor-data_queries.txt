@@ -1,0 +1,3 @@
+GET sensor-data/_search
+GET sensor-data/_mapping
+

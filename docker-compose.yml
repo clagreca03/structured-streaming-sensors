@@ -1,0 +1,226 @@
+version: '3.8'
+services:
+
+    mosquitto:
+        image: eclipse-mosquitto:2
+        container_name: mosquitto
+        ports:
+            - 1883:1883
+            # - 8883:8883
+            # - 9001:9001
+        volumes:
+            - ./mqtt:/mosquitto/config
+            #- ./mosquitto/data:/mosquitto/data
+            #- ./mosquitto/log:/mosquitto/log
+        networks:
+            - data-network
+
+
+    zookeeper:
+        image: confluentinc/cp-zookeeper:7.6.1
+        container_name: zookeeper
+        networks: 
+            - data-network
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+
+
+    kafka:
+        image: confluentinc/cp-kafka:7.6.1
+        container_name: kafka
+        depends_on:
+            - zookeeper
+        ports:
+        # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
+        # An important note about accessing Kafka from clients on other machines: 
+        # -----------------------------------------------------------------------
+        #
+        # The config used here exposes port 9092 for _external_ connections to the broker
+        # i.e. those from _outside_ the docker network. This could be from the host machine
+        # running docker, or maybe further afield if you've got a more complicated setup. 
+        # If the latter is true, you will need to change the value 'localhost' in 
+        # KAFKA_ADVERTISED_LISTENERS to one that is resolvable to the docker host from those 
+        # remote clients
+        #
+        # For connections _internal_ to the docker network, such as from other services
+        # and components, use kafka:29092.
+        #
+        # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
+        # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
+        #
+            - 9092:9092
+        networks: 
+            - data-network
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+            KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+            KAFKA_LOG4J_ROOT_LOGLEVEL: "INFO"
+            KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+            # -v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v-v
+            # Useful settings for development/laptop use - modify as needed for Prod
+            # This one makes ksqlDB feel a bit more responsive when queries start running
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
+        command:
+            - bash
+            - -c 
+            - |
+                echo '127.0.0.1 kafka' >> /etc/hosts
+                /etc/confluent/docker/run
+                sleep infinity
+
+
+    schema-registry:
+        image: confluentinc/cp-schema-registry:7.6.1
+        container_name: schema-registry
+        depends_on:
+            - zookeeper
+            - kafka
+        ports:
+            - "8081:8081"
+        networks: 
+            - data-network
+        environment:
+            SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka:29092"
+            SCHEMA_REGISTRY_HOST_NAME: "schema-registry"
+            SCHEMA_REGISTRY_LISTENERS: "http://schema-registry:8081"
+            SCHEMA_REGISTRY_DEBUG: "true"
+            SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+            SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: "INFO"
+
+
+    kafka-connect:
+        image: confluentinc/cp-kafka-connect:7.6.1
+        container_name: kafka-connect
+        depends_on:
+            - zookeeper
+            - kafka
+            - schema-registry
+        ports:
+            - 8083:8083
+        networks: 
+            - data-network
+        environment:
+            CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
+            CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
+            CONNECT_REST_PORT: 8083
+            CONNECT_GROUP_ID: "connect-cluster"
+            CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+            CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+            CONNECT_STATUS_STORAGE_TOPIC: _connect-status
+            CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+            CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+            CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+            CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+            CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+            CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
+            CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+            CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+            CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+            CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+        command:
+            - bash
+            - -c
+            - |
+                echo "Installing Connector"
+                confluent-hub install --no-prompt confluentinc/kafka-connect-mqtt:1.7.2
+                #
+                echo "Launching Kafka Connect worker"
+                /etc/confluent/docker/run &
+                #
+                sleep infinity
+
+
+    control-center:
+        image: confluentinc/cp-enterprise-control-center:7.6.1
+        hostname: control-center
+        container_name: control-center
+        depends_on:
+            - kafka
+            - schema-registry
+            - kafka-connect
+        ports:
+            - "9021:9021"
+        networks: 
+            - data-network
+        environment:
+            CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
+            CONTROL_CENTER_CONNECT_CONNECT_CLUSTER: 'http://kafka-connect:8083'
+            CONTROL_CENTER_CONNECT_CONNECT_CLUSTER_ALIAS: 'connect-cluster'
+            CONTROL_CENTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+            CONTROL_CENTER_REPLICATION_FACTOR: 1
+            CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+            CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+            CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+            PORT: 9021
+
+
+    spark-master:
+        image: bitnami/spark:3.4.3
+        container_name: spark-master
+        ports:
+            - "8080:8080"
+        networks:
+            - data-network
+        volumes:
+            - ./spark-app:/opt/spark-app
+            # - ./jars:/opt/spark/jars
+        environment:
+            - SPARK_MODE=master
+
+
+    spark-worker:
+        image: bitnami/spark:3.4.3
+        container_name: spark-worker
+        depends_on:
+            - spark-master
+        networks:
+            - data-network
+        environment:
+            - SPARK_MODE=worker
+            - SPARK_MASTER_URL=spark://spark-master:7077
+
+
+    elasticsearch:
+        image: elasticsearch:8.13.4
+        container_name: elastic
+        environment:
+            - xpack.security.enabled=false
+            - discovery.type=single-node
+        ports:
+            - "9200:9200"
+        networks:
+            - data-network
+
+
+    kibana:
+        image: kibana:8.13.4
+        container_name: kibana
+        environment:
+            - ELASTICSEARCH_HOSTS=http://elastic:9200
+        depends_on:
+            - elasticsearch
+        ports:
+            - "5601:5601"
+        networks:
+            - data-network
+
+
+    kafkacat:
+        image: confluentinc/cp-kafkacat
+        container_name: kafkacat
+        networks:
+            - data-network
+        command: sleep infinity
+
+networks:
+    data-network:
+        name: data-network
+        driver: bridge

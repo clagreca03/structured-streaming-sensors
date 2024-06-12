@@ -1,0 +1,1 @@
+{"mappings": {"properties": {"event_id": {"type": "keyword"}, "event_time": {"type": "date"}, "sensor_id": {"type": "keyword"}, "sensor_name": {"type": "text"}, "sensor_type": {"type": "keyword"}, "latitude": {"type": "float"}, "longitude": {"type": "float"}, "geolocation": {"type": "geo_point"}}}}
