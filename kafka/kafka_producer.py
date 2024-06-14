@@ -1,12 +1,23 @@
-from random import choice
-from confluent_kafka import Producer 
+from confluent_kafka import Producer
+import json
+import yaml
 
-conf = {
-    'bootstrap.servers': 'localhost:29092',
-}
 
-# Create Producer instance
-p = Producer(conf)
+
+def get_config():
+
+    with open("config.yml") as f:
+        try:
+            config = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            print(e)
+
+    config = config.get('kafka-config').get('local')
+    kconfig = {
+        "bootstrap.servers": config.get('bootstrap.servers'),
+    }
+
+    return kconfig
 
 
 # Optional per-message delivery callback (triggered by poll() or flush())
@@ -17,22 +28,21 @@ def delivery_callback(err, msg):
         print('ERROR: Message failed delivery: {}'.format(err))
     else:
         print("Produced event topic '{topic}': key = '{key}', value = '{value}'".format(
-            topic=msg.topic(), key=msg.key().decode('utf-8'), value=msg.value().decode('utf-8')
+            topic=msg.topic(), key=msg.key(), value=msg.value().decode('utf-8')
         ))
 
 
-# Produce data by selecting random values from these lists
-topic = 'quickstart-events'
-user_ids = ['eabara', 'jsmith', 'sgarcia', 'jbernard', 'htanaka', 'awalther']
-products = ['book', 'alarm clock', 't-shirts', 'gift card', 'batteries']
+if __name__ == '__main__':
+    config = get_config()
 
-count = 0
-for _ in range(10):
-    user_id = choice(user_ids)
-    product = choice(products)
-    p.produce(topic, product, user_id, callback=delivery_callback)
-    count += 1
+    # Create Producer instance
+    p = Producer(config)
+    topic = 'sensor-data'
+    sensors = [{"event_id": "5bb5f370-d26b-4a3f-8601-3b67ef07f19f", "event_time": "2024-06-13T22:10:23.315639", "sensor_id": 700, "sensor_name": "test350", "sensor_type": "gps", "latitude": 28.818898691074864, "longitude": -82.30191984738413}]
 
-# Block until the messages are sent.
-p.poll(10000)
-p.flush()
+    for sensor in sensors:
+        p.produce(topic, json.dumps(sensor).encode('utf-8'), callback=delivery_callback)
+
+    # Block until the messages are sent.
+    p.poll(10000)
+    p.flush()

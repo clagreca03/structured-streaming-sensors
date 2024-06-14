@@ -2,7 +2,6 @@ from confluent_kafka import Consumer
 import yaml
 
 
-
 def get_config():
 
     with open("config.yml") as f:
@@ -15,18 +14,14 @@ def get_config():
     kconfig = {
         "bootstrap.servers": config.get('bootstrap.servers'),
         "group.id": config.get('group.id'),
+        "session.timeout.ms": config.get('session.timeout.ms'),
         "auto.offset.reset": config.get('auto.offset.reset'),
         "enable.auto.commit": config.get('enable.auto.commit'),
         "auto.commit.interval.ms": config.get('auto.commit.interval.ms'),
-        "session.timeout.ms": config.get('session.timeout.ms'),
         "api.version.request": config.get('api.version.request'),
     }
 
-    # print(kconfig)
-    # exit()
-
     return kconfig
-
 
 
 if __name__ == '__main__':
