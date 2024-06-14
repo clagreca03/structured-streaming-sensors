@@ -1,13 +1,6 @@
-## To Do list
-
-### Code
-- [] Kafka consumer
-- [] Kafka producer
-
-
-### Misc
-- [] Dependency injection for data generation
+# TODO
+- [] Update README map instructions
 - [] mqtt_consumer error handling on incorrect arguments
-
+- [] Dependency injection for data generation
 
 
