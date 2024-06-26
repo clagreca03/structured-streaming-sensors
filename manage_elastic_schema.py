@@ -100,7 +100,7 @@ def get_config():
 def parse_arguments():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", help="create, clear, delete, map")
+    parser.add_argument("action", nargs='?', help="select action (create, clear, delete, or map)", default="create")
     args = parser.parse_args()
 
 
@@ -137,5 +137,9 @@ if __name__ == "__main__":
 
     elif action == "map":
         create_map()
+
+    else: 
+        print("Invalid action. Please specify create, clear, delete, or map.")
+        exit()
 
 
