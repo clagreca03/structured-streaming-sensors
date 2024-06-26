@@ -74,6 +74,11 @@ if __name__ == '__main__':
     env, topic = parse_arguments()
     config = get_config().get('mqtt-config').get(env)
 
+
+    if config is None:
+        print("Something went wrong with your config selection. Please try again.")
+        exit()
+
     # create a client instance
     client = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=config.get('mqtt.client.id'))
     if config.get('mqtt.require.login'): client.username_pw_set(username=config.get('mqtt.user'), password=config.get('mqtt.pass'))
