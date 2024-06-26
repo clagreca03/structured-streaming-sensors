@@ -78,11 +78,14 @@ if __name__ == "__main__":
     env = c.get('global-env')
     config = c.get('kafka-config').get(env)
 
-    kafka_url = config.get('kafka.connect.url')
-
+    kafka_url = config.get('connect.url')
 
     if action == "create":
         create_connector(kafka_url)
 
     elif action == "delete":
         delete_connector(kafka_url)
+
+    else:
+        print("Invalid action. Please specify create or delete.")
+        exit()
