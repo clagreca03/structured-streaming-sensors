@@ -50,7 +50,7 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("env", help="select mqtt environment")
-    parser.add_argument("topic", nargs='?', help="(optional) select mqtt topic", default="test")
+    parser.add_argument("topic", nargs='?', help="(optional) select mqtt topic", default=None)
     args = parser.parse_args()
 
     if args.env:
@@ -61,23 +61,24 @@ def parse_arguments():
 
     if args.topic:
         topic = str(args.topic)
-    else:
-        print("Please specify the topic you wish you subscribe")
-        exit()
 
 
-    return env, topic
+
+    return args
 
 
 if __name__ == '__main__':
     
-    env, topic = parse_arguments()
+    args = parse_arguments()
+    env, topic = args.env, args.topic
     config = get_config().get('mqtt-config').get(env)
 
-
+    # if the topic argument is not specified, use the default topic
     if config is None:
         print("Something went wrong with your config selection. Please try again.")
         exit()
+    else:
+        config['topic'] = topic
 
     # create a client instance
     client = paho.Client(paho.CallbackAPIVersion.VERSION2, client_id=config.get('mqtt.client.id'))
