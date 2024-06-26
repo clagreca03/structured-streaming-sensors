@@ -90,7 +90,7 @@ On the left side on the map, update the `Latitude`, `Longitude`, and `Zoom` fiel
 
 Just to the right of the search bar, there is a button to set the `Refresh Interval`. Click and set the interval as follows:
 
-![alt text](./img/map-settings-2.png.png)
+![alt text](./img/map-settings-2.png)
 
 ---
 ### Kick off the Spark Appplication
