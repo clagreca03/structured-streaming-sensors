@@ -50,20 +50,28 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("env", help="select mqtt environment")
+    parser.add_argument("topic", nargs='?', help="(optional) select mqtt topic", default="test")
     args = parser.parse_args()
 
     if args.env:
         env = str(args.env)
     else:
-        print("Please specify the number of events to generate")
+        print("Please specify the mqtt environment") 
         exit()
 
-    return env
+    if args.topic:
+        topic = str(args.topic)
+    else:
+        print("Please specify the topic you wish you subscribe")
+        exit()
+
+
+    return env, topic
 
 
 if __name__ == '__main__':
     
-    env = parse_arguments()
+    env, topic = parse_arguments()
     config = get_config().get('mqtt-config').get(env)
 
     # create a client instance
